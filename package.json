@@ -1,0 +1,10 @@
+{
+  "name": "serverless-test-drive",
+  "version": "1.0.0",
+  "author": "Kazi Manzur Rashid <kazimanzurrasid@gmail.com>",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "aws-sdk": "^2.3.10"
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Server-less backend setup.",
+  "Parameters": {
+    "S3Bucket": {
+      "Description": "S3 bucket name where the lambda functions are located",
+      "Default": "std.lambda",
+      "Type": "String",
+      "MinLength": "1"
+    }
+  },
+  "Resources": {
+    "WordsTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "std_words",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "word",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "word",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "1",
+          "WriteCapacityUnits": "1"
+        },
+        "StreamSpecification": {
+          "StreamViewType": "KEYS_ONLY"
+        }
+      }
+    },
+    "CountsTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "std_counts",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "word",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "word",
+            "KeyType": "HASH"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "1",
+          "WriteCapacityUnits": "5"
+        }
+      }
+    },
+    "Role": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "RolePolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "std-role-policy",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "arn:aws:logs:*:*:*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem",
+                "dynamodb:UpdateItem"
+              ],
+              "Resource": "arn:aws:dynamodb:*:*:table/std_*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:DescribeStream",
+                "dynamodb:GetRecords",
+                "dynamodb:GetShardIterator",
+                "dynamodb:ListStreams"
+              ],
+              "Resource": {
+                "Fn::GetAtt" : ["WordsTable", "StreamArn"]
+              }
+            },
+            {
+              "Effect": "Allow",
+              "Action": "lambda:InvokeFunction",
+              "Resource": "*"
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "Role"
+          }
+        ]
+      }
+    },
+    "WordCreateFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "std-word_add",
+        "Handler": "index.handler",
+        "Runtime": "nodejs4.3",
+        "Role": { "Fn::GetAtt" : ["Role", "Arn"] },
+        "Code": {
+          "S3Bucket":  { "Ref": "S3Bucket" },
+          "S3Key": "word.create.zip"
+        }
+      }
+    },
+    "WordCountsFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "std-word_counts",
+        "Handler": "index.handler",
+        "Runtime": "nodejs4.3",
+        "Role": {
+          "Fn::GetAtt" : ["Role", "Arn"]
+        },
+        "Code": {
+          "S3Bucket":  { "Ref": "S3Bucket" },
+          "S3Key": "word.counts.zip"
+        }
+      }
+    },
+    "WordTriggerFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "std-word_trigger",
+        "Handler": "index.handler",
+        "Runtime": "nodejs4.3",
+        "Role": { "Fn::GetAtt" : ["Role", "Arn"] },
+        "Code": {
+          "S3Bucket":  { "Ref": "S3Bucket" },
+          "S3Key": "word.trigger.zip"
+        }
+      }
+    },
+    "WordTriggerMapping": {
+      "Type": "AWS::Lambda::EventSourceMapping",
+      "Properties": {
+        "Enabled": "true",
+        "StartingPosition": "TRIM_HORIZON",
+        "EventSourceArn": {
+          "Fn::GetAtt" : ["WordsTable", "StreamArn"]
+        },
+        "FunctionName": {
+          "Fn::GetAtt" : ["WordTriggerFunction", "Arn"]
+        }
+      }
+    }
+  }
+}
