@@ -28,7 +28,7 @@ exports.handler = (event, context, callback) => {
         word: key
       },
       TableName: 'std_counts',
-      UpdateExpression: 'ADD #c :v',
+      UpdateExpression: 'add #c :v',
       ExpressionAttributeNames: {
         '#c': 'counts'
       },

@@ -8,7 +8,8 @@ exports.handler = (event, context, callback) => {
   const payload = {
     TableName: 'std_words',
     Item: {
-      'word': event.word
+      'word': event.word,
+      'timestamp': Date.UTC
     },
     ReturnConsumedCapacity: 'NONE',
     ReturnItemCollectionMetrics: 'NONE',
