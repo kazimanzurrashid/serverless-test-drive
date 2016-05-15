@@ -9,7 +9,7 @@ exports.handler = (event, context, callback) => {
     TableName: 'std_words',
     Item: {
       'word': event.word,
-      'timestamp': Date.UTC
+      'timestamp': Date.now()
     },
     ReturnConsumedCapacity: 'NONE',
     ReturnItemCollectionMetrics: 'NONE',

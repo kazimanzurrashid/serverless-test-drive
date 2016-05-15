@@ -12,7 +12,6 @@
     "gulp-eslint": "^2.0.0",
     "gulp-jscs": "^3.0.2",
     "gulp-load-plugins": "^1.2.2",
-    "gulp-s3-upload": "^1.6.0",
     "gulp-zip": "^3.2.0",
     "jscs": "^3.0.3"
   }

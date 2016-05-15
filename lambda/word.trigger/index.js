@@ -15,7 +15,7 @@ exports.handler = (event, context, callback) => {
     });
 
   const wordsGroupByCount = (() => {
-    let map = {};
+    const map = {};
     words.forEach((word) => {
       map[word] = (map[word] || 0) + 1;
     });

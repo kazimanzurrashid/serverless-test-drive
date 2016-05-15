@@ -4,7 +4,6 @@
   "Parameters": {
     "S3Bucket": {
       "Description": "S3 bucket name where the lambda functions are located",
-      "Default": "server-less-test-drive",
       "Type": "String",
       "MinLength": "1"
     }

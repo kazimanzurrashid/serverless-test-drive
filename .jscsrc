@@ -57,7 +57,6 @@
     "disallowSpacesInsideObjectBrackets": "all",
     "disallowSpacesInsideArrayBrackets": "all",
     "disallowSpacesInsideParentheses": true,
-
     "disallowMultipleLineBreaks": true,
     "disallowNewlineBeforeBlockStatements": true,
     "disallowKeywords": ["with"],
