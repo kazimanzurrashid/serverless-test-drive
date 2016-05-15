@@ -66,7 +66,8 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  "lambda.amazonaws.com"
+                  "lambda.amazonaws.com",
+                  "apigateway.amazonaws.com"
                 ]
               },
               "Action": [
@@ -179,6 +180,191 @@
         },
         "FunctionName": {
           "Fn::GetAtt" : ["WordTriggerFunction", "Arn"]
+        }
+      }
+    },
+    "WordsApi": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Name": "WordsApi"
+      }
+    },
+    "WordsResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": { "Ref": "WordsApi" },
+        "ParentId": { "Fn::GetAtt": ["WordsApi", "RootResourceId"] },
+        "PathPart": "words"
+      }
+    },
+    "WordsPostMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": { "Ref": "WordsApi" },
+        "ResourceId": { "Ref": "WordsResource" },
+        "HttpMethod": "POST",
+        "AuthorizationType": "NONE",
+        "MethodResponses": [
+          {
+            "ResponseModels":
+            {
+              "application/json": "Empty"
+            },
+            "StatusCode": "200"
+          }
+        ],
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "IntegrationResponses":[
+            {
+              "StatusCode": "200"
+            }
+          ],
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/arn:aws:lambda:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":",
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                ":function:std-word_add/invocations"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "WordResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": { "Ref": "WordsApi" },
+        "ParentId": { "Ref": "WordsResource" },
+        "PathPart": "{word}"
+      }
+    },
+    "WordGetMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": { "Ref": "WordsApi" },
+        "ResourceId": { "Ref": "WordResource" },
+        "HttpMethod": "GET",
+        "AuthorizationType": "NONE",
+        "MethodResponses": [
+          {
+            "ResponseModels":
+            {
+              "application/json": "Empty"
+            },
+            "StatusCode": "200"
+          }
+        ],
+        "Integration": {
+          "Type": "AWS",
+          "IntegrationHttpMethod": "POST",
+          "RequestTemplates": {
+            "application/json": "{ \"word\" : \"$input.params('word')\" }"
+          },
+          "IntegrationResponses":[
+            {
+              "StatusCode": "200"
+            }
+          ],
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/arn:aws:lambda:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":",
+                {
+                  "Ref": "AWS::AccountId"
+                },
+                ":function:std-word_counts/invocations"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "WordCreateFunctionPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "WordCreateFunction",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:aws:execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "WordsApi"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+    "WordCountsFunctionPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "WordCountsFunction",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:aws:execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "WordsApi"
+              },
+              "/*"
+            ]
+          ]
         }
       }
     }

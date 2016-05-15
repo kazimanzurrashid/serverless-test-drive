@@ -4,7 +4,6 @@ const AWS = require('aws-sdk');
 const db = new AWS.DynamoDB.DocumentClient();
 
 exports.handler = (event, context, callback) => {
-
   const payload = {
     TableName: 'std_counts',
     Key: {

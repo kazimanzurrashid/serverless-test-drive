@@ -4,7 +4,6 @@ const AWS = require('aws-sdk');
 const db = new AWS.DynamoDB.DocumentClient();
 
 exports.handler = (event, context, callback) => {
-
   const payload = {
     TableName: 'std_words',
     Item: {
@@ -15,7 +14,7 @@ exports.handler = (event, context, callback) => {
     ReturnItemCollectionMetrics: 'NONE',
     ReturnValues: 'NONE'
   };
-  
+
   db.put(payload, (err) => {
     callback(err);
   });

@@ -4,7 +4,6 @@ const AWS = require('aws-sdk');
 const db = new AWS.DynamoDB.DocumentClient();
 
 exports.handler = (event, context, callback) => {
-
   const words = event.Records
     .filter((record) => {
       return record.eventName == 'INSERT' || record.eventName == 'MODIFY';
