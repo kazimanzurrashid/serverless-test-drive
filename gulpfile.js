@@ -119,7 +119,7 @@ gulp.task('stack:up', ['lambda:upload'], () => {
     });
 });
 
-gulp.task('stack:down', () => {
+gulp.task('stack:down', ['lambda:bucket:delete'], () => {
   return getStack().then((stack) => {
     if (stack) {
       return deleteStack(stack.StackId);
@@ -197,13 +197,62 @@ function upload(bucket, key, location) {
 function deleteBucket(bucket) {
   return new Promise((resolve, reject) => {
     const s3 = new plugins.awsSdk.S3();
-    s3.deleteBucket({
-      Bucket: bucket
-    }, (err) => {
-      if (err) {
-        return reject(err);
+    let nextMarker;
+    
+    const deleteObjects = (callback) => {
+      s3.listObjects({
+        Bucket: bucket,
+        Marker: nextMarker
+      }, (listErr, listResponse) => {
+        if (listErr) {
+          return callback(listErr);
+        }
+
+        const objects = listResponse.Contents.map((content) => {
+          return {
+            Key: content.Key
+          };
+        });
+
+        if (!objects.length) {
+          return callback();
+        }
+
+        nextMarker = listResponse.IsTruncated ?
+          objects[objects.length - 1].Key :
+          void(0);
+
+        s3.deleteObjects({
+          Bucket: bucket,
+          Delete: {
+            Objects: objects
+          }
+        }, (deleteErr) => {
+          if (deleteErr) {
+            return callback(deleteErr);
+          }
+
+          if (!nextMarker) {
+            return callback();
+          }
+
+          deleteObjects(callback);
+        });
+      });
+    };
+
+    deleteObjects((deleteObjectErr) => {
+      if (deleteObjectErr) {
+        return reject(deleteObjectErr);
       }
-      resolve();
+      s3.deleteBucket({
+        Bucket: bucket
+      }, (deleteBucketErr) => {
+        if (deleteBucketErr) {
+          return reject(deleteBucketErr);
+        }
+        resolve();
+      });
     });
   });
 }
