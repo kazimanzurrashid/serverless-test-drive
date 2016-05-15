@@ -206,6 +206,9 @@
         "AuthorizationType": "NONE",
         "MethodResponses": [
           {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": "true"
+            },
             "ResponseModels":
             {
               "application/json": "Empty"
@@ -218,6 +221,9 @@
           "IntegrationHttpMethod": "POST",
           "IntegrationResponses":[
             {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'"
+              },
               "StatusCode": "200"
             }
           ],
@@ -244,6 +250,43 @@
         }
       }
     },
+    "WordsOptionMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": { "Ref": "WordsApi" },
+        "ResourceId": { "Ref": "WordsResource" },
+        "HttpMethod": "OPTIONS",
+        "AuthorizationType": "NONE",
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": "true",
+              "method.response.header.Access-Control-Allow-Methods": "true",
+              "method.response.header.Access-Control-Allow-Origin": "true"
+            },
+            "ResponseModels":
+            {
+              "application/json": "Empty"
+            },
+            "StatusCode": "200"
+          }
+        ],
+        "Integration": {
+          "Type": "MOCK",
+          "IntegrationHttpMethod": "POST",
+          "IntegrationResponses":[
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'",
+                "method.response.header.Access-Control-Allow-Methods": "'POST,OPTIONS'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'"
+              },
+              "StatusCode": "200"
+            }
+          ]
+        }
+      }
+    },
     "WordResource": {
       "Type": "AWS::ApiGateway::Resource",
       "Properties": {
@@ -261,6 +304,9 @@
         "AuthorizationType": "NONE",
         "MethodResponses": [
           {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": "true"
+            },
             "ResponseModels":
             {
               "application/json": "Empty"
@@ -274,8 +320,11 @@
           "RequestTemplates": {
             "application/json": "{ \"word\" : \"$input.params('word')\" }"
           },
-          "IntegrationResponses":[
+          "IntegrationResponses": [
             {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'"
+              },
               "StatusCode": "200"
             }
           ],
@@ -299,6 +348,42 @@
               ]
             ]
           }
+        }
+      }
+    },
+    "WordOptionsMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": { "Ref": "WordsApi" },
+        "ResourceId": { "Ref": "WordResource" },
+        "HttpMethod": "OPTIONS",
+        "AuthorizationType": "NONE",
+        "MethodResponses": [
+          {
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": "true",
+              "method.response.header.Access-Control-Allow-Methods": "true",
+              "method.response.header.Access-Control-Allow-Origin": "true"
+            },
+            "ResponseModels":
+            {
+              "application/json": "Empty"
+            },
+            "StatusCode": "200"
+          }
+        ],
+        "Integration": {
+          "Type": "MOCK",
+          "IntegrationResponses": [
+            {
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'",
+                "method.response.header.Access-Control-Allow-Methods": "'GET,OPTIONS'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'"
+              },
+              "StatusCode": "200"
+            }
+          ]
         }
       }
     },
