@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Server-less Test Drive</title>
+</head>
+<body>
+<div style="width:300px;margin:20px auto">
+    <input id="word" type="text" placeholder="Type your word..." autofocus>
+    <button id="add" type="button">Add</button>
+    <button id="count" type="button">Count</button>
+    <span id="display"></span>
+</div>
+<script>
+    var ajax = (function() {
+
+        function respond(xhr, callback) {
+            if (xhr.readyState !== 4) {
+                return;
+            }
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+                var data;
+
+                if (xhr.responseText) {
+                    data = JSON.parse(xhr.responseText);
+                }
+
+                return callback(void(0), data);
+            }
+
+            callback({
+                status: xhr.status,
+                statusText: xhr.statusText
+            });
+        }
+
+        function request(url, method, callback) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.setRequestHeader("Accept", "application/json");
+            xhr.onreadystatechange = function() {
+                respond(xhr, callback);
+            };
+        }
+
+        return {
+            get: function(url, callback) {
+                request(url, 'GET', callback).send();
+            },
+
+            post: function(url, payload, callback) {
+                request(url, 'POST', callback).send(JSON.stringify(payload));
+            }
+        };
+    })();
+
+    (function(doc) {
+        var endpoint = 'https://mewqer2nvc.execute-api.us-east-1.amazonaws.com/dev/words';
+
+        var word = doc.querySelector('#word');
+        var display = doc.querySelector('#display');
+
+        function add() {
+            if (!word.value) {
+                return;
+            }
+
+            display.textContent = 'Adding...';
+
+            ajax.post(endpoint, { word: word.value }, function(err) {
+                if (err) {
+                    display.textContent = 'ERROR';
+                    return;
+                }
+
+                display.textContent = "Added";
+            });
+        }
+
+        function count() {
+            if (!word.value) {
+                return;
+            }
+
+            var url = endpoint + '/' + encodeURIComponent(word.value);
+
+            display.textContent = 'Loading...';
+
+            ajax.get(url, function(err, data) {
+                if (err) {
+                    display.textContent = 'ERROR';
+                    return;
+                }
+
+                display.textContent = data.counts.toString();
+            });
+        }
+
+        doc.addEventListener('DOMContentLoaded', function() {
+            doc.querySelector('#add').addEventListener('click', add);
+            doc.querySelector('#count').addEventListener('click', count);
+        });
+    })(document);
+</script>
+</body>
+</html>

@@ -40,7 +40,7 @@ gulp.task('lambda:clean', () => {
   return plugins.del(distLambdaDirectory);
 });
 
-gulp.task('lambda:build', ['lambda:clean', 'lint'], () => {
+gulp.task('lambda:build', ['lambda:clean'], () => {
   const fs = require('fs');
 
   const promises = fs.readdirSync(config.paths.lambdaDirectory)
@@ -113,6 +113,9 @@ gulp.task('stack:up', ['lambda:upload'], () => {
         return updateStack(result.stack.StackId, result.template);
       }
       return createStack(result.template);
+    })
+    .then((apiId) => {
+      console.log('ApiId: ', apiId);
     })
     .catch((err) => {
       throw err;
@@ -384,6 +387,14 @@ function deleteStack(id) {
 }
 
 function pollStackStatus(id, resolve, reject) {
+  
+  const getApiId = (stack) => {
+    var output = stack.Outputs.find((o) => {
+      return o.OutputKey === 'ApiId';
+    });
+    return output.OutputValue;
+  };
+
   const poll = () => {
     setTimeout(() => {
       return getStack(id).then((stack) => {
@@ -396,7 +407,9 @@ function pollStackStatus(id, resolve, reject) {
           case 'CREATE_COMPLETE':
           case 'UPDATE_COMPLETE':
           case 'DELETE_COMPLETE': {
-            return resolve();
+            var apiId = getApiId(stack);
+            
+            return resolve(apiId);
           }
           case 'CREATE_IN_PROGRESS':
           case 'UPDATE_IN_PROGRESS':
@@ -427,3 +440,4 @@ function pollStackStatus(id, resolve, reject) {
 
   poll();
 }
+
