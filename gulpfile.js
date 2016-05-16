@@ -7,18 +7,18 @@ const plugins = require('gulp-load-plugins')({
   pattern: [
     'gulp-*',
     'aws-sdk',
-    'browser-sync',
-    'del'
+    'del',
+    'mime-types',
+    'opener'
   ]
 });
-
-const distLambdaDirectory = config.paths.distDirectory + '/lambda';
 
 plugins.awsSdk.config.update({region: config.aws.region});
 
 gulp.task('jscs', () => {
   return gulp.src([
     config.paths.lambdaDirectory + '/**/*.js',
+    config.paths.clientDirectory + '/**/*.js',
     './gulpfile.js'
   ])
     .pipe(plugins.jscs())
@@ -28,6 +28,7 @@ gulp.task('jscs', () => {
 gulp.task('eslint', () => {
   return gulp.src([
     config.paths.lambdaDirectory + '/**/*.js',
+    config.paths.clientDirectory + '/**/*.js',
     './gulpfile.js'
   ])
     .pipe(plugins.eslint())
@@ -37,11 +38,11 @@ gulp.task('eslint', () => {
 
 gulp.task('lint', ['jscs', 'eslint']);
 
-gulp.task('lambda:clean', () => {
-  return plugins.del(distLambdaDirectory);
+gulp.task('clean', () => {
+  return plugins.del(config.paths.tempDirectory);
 });
 
-gulp.task('lambda:build', ['lambda:clean', 'lint'], () => {
+gulp.task('lambda:build', ['clean', 'lint'], () => {
   const fs = require('fs');
 
   const promises = fs.readdirSync(config.paths.lambdaDirectory)
@@ -49,60 +50,76 @@ gulp.task('lambda:build', ['lambda:clean', 'lint'], () => {
       return new Promise((resolve) => {
         return gulp.src(config.paths.lambdaDirectory + '/' + entry + '/**/*')
           .pipe(plugins.zip(entry + '.zip'))
-          .pipe(gulp.dest(distLambdaDirectory))
-          .on('end', () => {
-            resolve();
-          });
+          .pipe(gulp.dest(config.paths.tempDirectory + '/lambda'))
+          .on('end', resolve);
       });
     });
 
   return Promise.all(promises);
 });
 
-gulp.task('lambda:bucket:create', () => {
-  return bucketExists(config.aws.lambdaBucket)
-    .then((exists) => {
-      if (!exists) {
-        return createBucket(config.aws.lambdaBucket);
+gulp.task('buckets:create', () => {
+  return getStack({name: config.aws.bucketsStackName})
+    .then((stack) => {
+      if (stack) {
+        return;
+      }
+      return readFile(config.paths.cloudformationDirectory +
+        '/buckets.template');
+    })
+    .then((content) => {
+      if (content) {
+        return validateTemplate(content.toString());
       }
     })
-    .catch((err) => {
-      throw err;
+    .then((content) => {
+      if (!content) {
+        return;
+      }
+
+      return createStack(
+        config.aws.bucketsStackName,
+        content, [
+          {
+            ParameterKey: 'LambdaBucketName',
+            ParameterValue: config.aws.lambdaBucket
+          },
+          {
+            ParameterKey: 'SiteBucketName',
+            ParameterValue: config.aws.siteBucket
+          }
+        ]);
     });
 });
 
-gulp.task('lambda:upload', ['lambda:build', 'lambda:bucket:create'], () => {
-  const fs = require('fs');
-  const uploads = fs.readdirSync(distLambdaDirectory)
-    .map((entry) => {
-      return upload(
-        config.aws.lambdaBucket,
-        entry,
-        distLambdaDirectory + '/' + entry);
-    });
+gulp.task('buckets:delete', () => {
+  var emptyLambdaBucket = emptyBucket(config.aws.lambdaBucket);
+  var emptySiteBucket = emptyBucket(config.aws.siteBucket);
 
-  return Promise.all(uploads);
+  return Promise.all([emptyLambdaBucket, emptySiteBucket])
+    .then(() => { return getStack({name: config.aws.bucketsStackName}); })
+    .then((stack) => {
+      if (!stack) {
+        return;
+      }
+      return deleteStack(stack.id, config.aws.bucketsStackName);
+    });
 });
 
-gulp.task('lambda:bucket:delete', () => {
-  return bucketExists(config.aws.lambdaBucket)
-    .then((exists) => {
-      if (exists) {
-        return deleteBucket(config.aws.lambdaBucket);
-      }
-    })
-    .catch((err) => {
-      throw err;
-    });
+gulp.task('lambda:upload', ['lambda:build', 'buckets:create'], () => {
+  return uploadDirectory(
+    config.paths.tempDirectory + '/lambda',
+    config.aws.lambdaBucket,
+    true);
 });
 
 gulp.task('stack:up', ['lambda:upload'], () => {
-  return readFile('./stack.template')
+  return readFile(config.paths.cloudformationDirectory  + '/stack.template')
     .then((content) => {
-      return validateTemplate(content);
+      return validateTemplate(content.toString());
     })
     .then((content) => {
-      return getStack().then((stack) => {
+      return getStack({name: config.aws.mainStackName}).then((stack) => {
         return {
           stack: stack,
           template: content
@@ -110,51 +127,72 @@ gulp.task('stack:up', ['lambda:upload'], () => {
       });
     })
     .then((result) => {
+      const params = [
+          {
+            ParameterKey: 'S3BucketName',
+            ParameterValue: config.aws.lambdaBucket
+          }
+        ];
+
       if (result.stack) {
-        return updateStack(result.stack.StackId, result.template);
+        return updateStack(
+          result.stack.stackId,
+          config.aws.mainStackName,
+          result.template,
+          params);
       }
-      return createStack(result.template);
+
+      return createStack(
+        config.aws.mainStackName,
+        result.template,
+        params);
     })
-    .then((apiId) => {
-      gulp.src('./client/index.html')
-        .pipe(plugins.replace('{{API-ID}}', apiId))
-        .pipe(gulp.dest('./serve'));
-    })
-    .catch((err) => {
-      throw err;
+    .then((stack) => {
+      return getApiId(stack);
+    }).then((apiId) => {
+      return deployApi(apiId);
     });
 });
 
-gulp.task('stack:down', ['lambda:bucket:delete'], () => {
-  return getStack().then((stack) => {
+gulp.task('client:upload', ['stack:up'], () => {
+  return getStack({name: config.aws.mainStackName})
+    .then((stack) => {
+      return getApiId(stack);
+    })
+    .then((apiId) => {
+      return copyClientFiles(apiId);
+    })
+    .then(() => {
+      return uploadDirectory(
+        config.paths.tempDirectory + '/client',
+        config.aws.siteBucket,
+        false);
+    })
+    .then(() => {
+      return plugins.opener(
+        'http://' +
+        config.aws.siteBucket +
+        '.s3-website-' +
+        config.aws.region +
+        '.amazonaws.com');
+    });
+});
+
+gulp.task('stack:down', ['clean', 'buckets:delete'], () => {
+  return getStack({name: config.aws.mainStackName}).then((stack) => {
     if (stack) {
-      return deleteStack(stack.StackId);
+      return deleteStack(stack.id, config.aws.mainStackName);
     }
-  })
-  .catch((err) => {
-    throw err;
   });
 });
 
-const browserSync = plugins.browserSync.create();
-
-gulp.task('serve:watch', browserSync.reload);
-
-gulp.task('run', ['stack:up'], () => {
-  browserSync.init({
-    server: './serve'
-  });
-
-  return gulp.watch('./client/index.html', ['serve:watch']);
-});
-
-gulp.task('default', ['run']);
+gulp.task('default', ['client:upload']);
 
 function readFile(location) {
   const fs = require('fs');
 
   return new Promise((resolve, reject) => {
-    fs.readFile(location, 'utf-8', (err, content) => {
+    fs.readFile(location, (err, content) => {
       if (err) {
         return reject(err);
       }
@@ -163,62 +201,53 @@ function readFile(location) {
   });
 }
 
-function bucketExists(bucket) {
+function copyClientFiles(apiId) {
   return new Promise((resolve) => {
-    const s3 = new plugins.awsSdk.S3();
-    s3.headBucket({
-      Bucket: bucket
-    }, (err) => {
-      if (err) {
-        return resolve(false);
-      }
-      resolve(true);
-    });
+    return gulp.src(config.paths.clientDirectory + '/**/*')
+      .pipe(plugins.replace('{{API-ID}}', apiId))
+      .pipe(gulp.dest(config.paths.tempDirectory + '/client'))
+      .on('end', resolve);
   });
 }
 
-function createBucket(bucket) {
-  return new Promise((resolve, reject) => {
-    const s3 = new plugins.awsSdk.S3();
-    s3.createBucket({
-      Bucket: bucket
-    }, (err) => {
-      if (err) {
-        return reject(err);
-      }
-      resolve();
-    });
-  });
-}
+function uploadDirectory(location, bucket, local) {
+  const fs = require('fs');
 
-function upload(bucket, key, location) {
-  return new Promise((resolve, reject) => {
-    const fs = require('fs');
-    fs.readFile(location, (readErr, data) => {
-      if (readErr) {
-        return reject(readErr);
-      }
+  const uploads = fs.readdirSync(location)
+    .map((entry) => {
+      return new Promise((resolve, reject) => {
+        return readFile(location + '/' + entry)
+          .then((content) => {
+            const s3 = new plugins.awsSdk.S3();
+            const params = {
+              Bucket: bucket,
+              Key: entry,
+              Body: content,
+              ACL: local ? 'private' : 'public-read',
+              ContentType: plugins.mimeTypes.lookup(entry)
+            };
 
-      const s3 = new plugins.awsSdk.S3();
-      s3.putObject({
-        Bucket: bucket,
-        Key: key,
-        Body: data
-      }, (putErr) => {
-        if (putErr) {
-          return reject(putErr);
-        }
-        resolve();
+            s3.putObject(params, (err) => {
+              if (err) {
+                return reject(err);
+              }
+              resolve();
+            });
+
+          }, (err) => {
+            reject(err);
+          });
       });
     });
-  });
+
+  return Promise.all(uploads);
 }
 
-function deleteBucket(bucket) {
+function emptyBucket(bucket) {
   return new Promise((resolve, reject) => {
     const s3 = new plugins.awsSdk.S3();
     let nextMarker;
-    
+
     const deleteObjects = (callback) => {
       s3.listObjects({
         Bucket: bucket,
@@ -261,17 +290,17 @@ function deleteBucket(bucket) {
       });
     };
 
-    deleteObjects((deleteObjectErr) => {
-      if (deleteObjectErr) {
-        return reject(deleteObjectErr);
+    s3.headBucket({
+      Bucket: bucket
+    }, (headErr) => {
+      if (headErr) {
+        return resolve(headErr);
       }
-      s3.deleteBucket({
-        Bucket: bucket
-      }, (deleteBucketErr) => {
-        if (deleteBucketErr) {
-          return reject(deleteBucketErr);
+      deleteObjects((deleteErr) => {
+        if (deleteErr) {
+          return reject(deleteErr);
         }
-        resolve();
+        return resolve();
       });
     });
   });
@@ -280,7 +309,9 @@ function deleteBucket(bucket) {
 function validateTemplate(content) {
   return new Promise((resolve, reject) => {
     const cfn = new plugins.awsSdk.CloudFormation();
-    cfn.validateTemplate({TemplateBody: content}, (err) => {
+    cfn.validateTemplate({
+      TemplateBody: content
+    }, (err) => {
       if (err) {
         return reject(err);
       }
@@ -289,7 +320,7 @@ function validateTemplate(content) {
   });
 }
 
-function getStack(id) {
+function getStack(options) {
   return new Promise((resolve, reject) => {
     const cfn = new plugins.awsSdk.CloudFormation();
     let nextToken;
@@ -312,8 +343,17 @@ function getStack(id) {
         }
 
         const match = response.Stacks.find((s) => {
-          return s.StackName === config.aws.cloudformationStackName &&
-            (!id || s.StackId === id);
+          let found = false;
+
+          if (options.name) {
+            found = s.StackName === options.name;
+          }
+
+          if (options.id) {
+            found = s.StackId === options.id;
+          }
+
+          return found;
         });
 
         if (match) {
@@ -332,89 +372,65 @@ function getStack(id) {
   });
 }
 
-function createStack(template) {
+function createStack(name, template, parameters) {
   return new Promise((resolve, reject) => {
     const params = {
-      StackName: config.aws.cloudformationStackName,
+      StackName: name,
       Capabilities: ['CAPABILITY_IAM'],
-      Parameters: [
-        {
-          ParameterKey: 'S3Bucket',
-          ParameterValue: config.aws.lambdaBucket
-        }
-      ],
+      Parameters: parameters,
       TemplateBody: template
     };
 
     const cfn = new plugins.awsSdk.CloudFormation();
 
-    cfn.createStack(params, (err, response) => {
+    return cfn.createStack(params, (err, response) => {
       if (err) {
         return reject(err);
       }
-      return pollStackStatus(response.StackId, resolve, reject);
+      return pollStackStatus(response.StackId, name, resolve, reject);
     });
   });
 }
 
-function updateStack(id, template) {
+function updateStack(id, name, template, parameters) {
   return new Promise((resolve, reject) => {
     const params = {
-      StackName: id,
+      StackName: id || name,
       Capabilities: ['CAPABILITY_IAM'],
-      Parameters: [
-        {
-          ParameterKey: 'S3Bucket',
-          ParameterValue: config.aws.lambdaBucket
-        }
-      ],
+      Parameters: parameters,
       TemplateBody: template
     };
 
     const cfn = new plugins.awsSdk.CloudFormation();
 
     cfn.updateStack(params, (err) => {
-      if (err) {
-        if (err.code === 'ValidationError' &&
-          err.message === 'No updates are to be performed.') {
-          return resolve();
-        }
+      if (err &&
+        err.code !== 'ValidationError' &&
+        err.message !== 'No updates are to be performed.') {
         return reject(err);
       }
-      return pollStackStatus(id, resolve, reject);
+      return pollStackStatus(id, name, resolve, reject);
     });
   });
 }
 
-function deleteStack(id) {
+function deleteStack(id, name) {
   new Promise((resolve, reject) => {
-    const params = {
-      StackName: id
-    };
-
     const cfn = new plugins.awsSdk.CloudFormation();
 
-    cfn.deleteStack(params, (err) => {
+    cfn.deleteStack({StackName: id || name}, (err) => {
       if (err) {
         return reject(err);
       }
-      return pollStackStatus(id, resolve, reject);
+      return pollStackStatus(id, name, resolve, reject);
     });
   });
 }
 
-function pollStackStatus(id, resolve, reject) {
-  
-  const getApiId = (stack) => {
-    var output = stack.Outputs.find((o) => {
-      return o.OutputKey === 'ApiId';
-    });
-    return output.OutputValue;
-  };
-
+function pollStackStatus(id, name, resolve, reject) {
   const poll = () => {
     setTimeout(() => {
-      return getStack(id).then((stack) => {
+      return getStack({id: id, name: name}).then((stack) => {
 
         if (!stack || !stack.StackStatus) {
           return poll();
@@ -424,9 +440,7 @@ function pollStackStatus(id, resolve, reject) {
           case 'CREATE_COMPLETE':
           case 'UPDATE_COMPLETE':
           case 'DELETE_COMPLETE': {
-            var apiId = getApiId(stack);
-            
-            return resolve(apiId);
+            return resolve(stack);
           }
           case 'CREATE_IN_PROGRESS':
           case 'UPDATE_IN_PROGRESS':
@@ -456,4 +470,27 @@ function pollStackStatus(id, resolve, reject) {
   };
 
   poll();
+}
+
+function getApiId(stack) {
+  var output = stack.Outputs.find((o) => {
+    return o.OutputKey === 'ApiId';
+  });
+
+  return Promise.resolve(output.OutputValue);
+}
+
+function deployApi(apiId) {
+  return new Promise((resolve, reject) => {
+    const api = new plugins.awsSdk.APIGateway();
+    api.createDeployment({
+      restApiId: apiId,
+      stageName: config.aws.deploymentStageName
+    }, (err) => {
+      if (err) {
+        return reject(err);
+      }
+      resolve(apiId);
+    });
+  });
 }

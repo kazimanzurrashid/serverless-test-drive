@@ -1,0 +1,41 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "Server-less s3 buckets setup",
+  "Parameters": {
+    "LambdaBucketName": {
+      "Description": "S3 bucket name where the lambda functions would be uploaded",
+      "Type": "String",
+      "MinLength": "1"
+    },
+    "SiteBucketName": {
+      "Description": "S3 bucket name where the website pages would be uploaded",
+      "Type": "String",
+      "MinLength": "1"
+    }
+  },
+  "Resources" : {
+    "LambdaBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": { "Ref": "LambdaBucketName" }
+      }
+    },
+    "SiteBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": { "Ref": "SiteBucketName" },
+        "AccessControl": "PublicRead",
+        "WebsiteConfiguration": {
+          "IndexDocument" : "index.html"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "SiteUrl": {
+      "Value" : {
+        "Fn::GetAtt" : [ "SiteBucket", "WebsiteURL" ]
+      }
+    }
+  }
+}

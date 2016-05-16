@@ -1,10 +1,15 @@
 exports.aws = {
   region: 'us-east-1',
-  cloudformationStackName: 'server-less-test-drive',
-  lambdaBucket: 'server-less-test-drive'
+  mainStackName: 'server-less-test-drive-main',
+  bucketsStackName: 'server-less-test-drive-buckets',
+  lambdaBucket: 'server-less-test-drive-lambda',
+  siteBucket: 'server-less-test-drive-site',
+  deploymentStageName: 'dev'
 };
 
 exports.paths = {
   lambdaDirectory: './lambda',
-  distDirectory: './dist'
+  cloudformationDirectory: './cloudformation',
+  clientDirectory: './client',
+  tempDirectory: './.tmp'
 };
