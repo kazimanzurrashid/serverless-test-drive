@@ -6,8 +6,9 @@ const config = require('./config');
 const plugins = require('gulp-load-plugins')({
   pattern: [
     'gulp-*',
-    'del',
-    'aws-sdk'
+    'aws-sdk',
+    'browser-sync',
+    'del'
   ]
 });
 
@@ -40,7 +41,7 @@ gulp.task('lambda:clean', () => {
   return plugins.del(distLambdaDirectory);
 });
 
-gulp.task('lambda:build', ['lambda:clean'], () => {
+gulp.task('lambda:build', ['lambda:clean', 'lint'], () => {
   const fs = require('fs');
 
   const promises = fs.readdirSync(config.paths.lambdaDirectory)
@@ -115,7 +116,9 @@ gulp.task('stack:up', ['lambda:upload'], () => {
       return createStack(result.template);
     })
     .then((apiId) => {
-      console.log('ApiId: ', apiId);
+      gulp.src('./client/index.html')
+        .pipe(plugins.replace('{{API-ID}}', apiId))
+        .pipe(gulp.dest('./serve'));
     })
     .catch((err) => {
       throw err;
@@ -132,6 +135,20 @@ gulp.task('stack:down', ['lambda:bucket:delete'], () => {
     throw err;
   });
 });
+
+const browserSync = plugins.browserSync.create();
+
+gulp.task('serve:watch', browserSync.reload);
+
+gulp.task('run', ['stack:up'], () => {
+  browserSync.init({
+    server: './serve'
+  });
+
+  return gulp.watch('./client/index.html', ['serve:watch']);
+});
+
+gulp.task('default', ['run']);
 
 function readFile(location) {
   const fs = require('fs');
@@ -440,4 +457,3 @@ function pollStackStatus(id, resolve, reject) {
 
   poll();
 }
-
