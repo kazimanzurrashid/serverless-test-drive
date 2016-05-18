@@ -203,8 +203,23 @@ function readFile(location) {
 
 function copyClientFiles(apiId) {
   return new Promise((resolve) => {
-    return gulp.src(config.paths.clientDirectory + '/**/*')
+    const jsFiles = plugins.filter('**/*.js', {restore: true});
+    const htmlFiles = plugins.filter('**/*.html', {restore: true});
+
+    return gulp.src(config.paths.clientDirectory + '/**')
+      .pipe(jsFiles)
       .pipe(plugins.replace('{{API-ID}}', apiId))
+      .pipe(plugins.sourcemaps.init())
+      .pipe(plugins.uglify())
+      .pipe(plugins.sourcemaps.write('./'))
+      .pipe(jsFiles.restore)
+      .pipe(htmlFiles)
+      .pipe(plugins.htmlmin({
+        minifyCSS: true,
+        collapseWhitespace: true,
+        removeComments: true
+      }))
+      .pipe(htmlFiles.restore)
       .pipe(gulp.dest(config.paths.tempDirectory + '/client'))
       .on('end', resolve);
   });

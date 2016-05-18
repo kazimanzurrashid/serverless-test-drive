@@ -2,7 +2,7 @@
 
 'use strict';
 
-(function(doc) {
+(function(win, doc) {
   var ajax = (function() {
     function respond(xhr, callback) {
       if (xhr.readyState !== 4) {
@@ -26,7 +26,7 @@
     }
 
     function request(url, method, callback) {
-      var xhr = new window.XMLHttpRequest();
+      var xhr = new win.XMLHttpRequest();
       xhr.open(method, url, true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Accept', 'application/json');
@@ -92,5 +92,4 @@
     doc.getElementById('add').addEventListener('click', add);
     doc.getElementById('count').addEventListener('click', count);
   });
-})(window.document);
-
+})(window, window.document);
