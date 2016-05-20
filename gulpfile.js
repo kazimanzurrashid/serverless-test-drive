@@ -138,7 +138,7 @@ gulp.task('stack:up', ['lambda:upload'], () => {
 
       if (result.stack) {
         return updateStack(
-          result.stack.stackId,
+          result.stack.StackId,
           config.aws.mainStackName,
           result.template,
           params);
@@ -183,7 +183,7 @@ gulp.task('client:upload', ['stack:up'], () => {
 gulp.task('stack:down', ['clean', 'buckets:delete'], () => {
   return getStack({name: config.aws.mainStackName}).then((stack) => {
     if (stack) {
-      return deleteStack(stack.id, config.aws.mainStackName);
+      return deleteStack(stack.StackId, config.aws.mainStackName);
     }
   });
 });
