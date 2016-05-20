@@ -45,7 +45,7 @@ gulp.task('clean', () => {
 gulp.task('lambda:build', ['clean', 'lint'], () => {
   const fs = require('fs');
 
-  const promises = fs.readdirSync(config.paths.lambdaDirectory)
+  const zips = fs.readdirSync(config.paths.lambdaDirectory)
     .map((entry) => {
       return new Promise((resolve) => {
         return gulp.src(config.paths.lambdaDirectory + '/' + entry + '/**/*')
@@ -55,7 +55,7 @@ gulp.task('lambda:build', ['clean', 'lint'], () => {
       });
     });
 
-  return Promise.all(promises);
+  return Promise.all(zips);
 });
 
 gulp.task('buckets:create', () => {
@@ -104,7 +104,7 @@ gulp.task('buckets:delete', () => {
       if (!stack) {
         return;
       }
-      return deleteStack(stack.id, config.aws.bucketsStackName);
+      return deleteStack(stack.StackId, config.aws.bucketsStackName);
     });
 });
 
@@ -483,7 +483,7 @@ function pollStackStatus(id, name, resolve, reject) {
       }, (err) => {
         return reject(err);
       });
-    }, 1000 * 10);
+    }, 1000 * 15);
   };
 
   poll();
