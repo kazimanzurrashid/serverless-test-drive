@@ -97,7 +97,9 @@ gulp.task('buckets:delete', () => {
   var emptySiteBucket = emptyBucket(config.aws.siteBucket);
 
   return Promise.all([emptyLambdaBucket, emptySiteBucket])
-    .then(() => { return getStack({name: config.aws.bucketsStackName}); })
+    .then(() => {
+      return getStack({name: config.aws.bucketsStackName});
+    })
     .then((stack) => {
       if (!stack) {
         return;
