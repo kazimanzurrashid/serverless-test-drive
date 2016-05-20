@@ -5,7 +5,7 @@
   "license": "MIT",
   "dependencies": {},
   "devDependencies": {
-    "aws-sdk": "^2.3.10",
+    "aws-sdk": "^2.3.14",
     "del": "^2.2.0",
     "eslint": "^2.9.0",
     "gulp": "^3.9.1",
