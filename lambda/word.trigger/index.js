@@ -21,7 +21,7 @@ exports.handler = (event, context, callback) => {
     return map;
   })();
 
-  const upserts = Object.keys(wordsGroupByCount).map((key) => {
+  const updates = Object.keys(wordsGroupByCount).map((key) => {
     const payload = {
       Key: {
         word: key
@@ -50,7 +50,7 @@ exports.handler = (event, context, callback) => {
     });
   });
 
-  Promise.all(upserts).then(() => {
+  Promise.all(updates).then(() => {
     callback();
   }, (errors) => {
     callback(errors);
