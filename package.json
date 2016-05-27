@@ -1,9 +1,13 @@
 {
-  "name": "serverless-test-drive",
-  "version": "1.0.0",
+  "name": "server-less-test-drive",
+  "version": "0.0.1",
+  "private": true,
   "author": "Kazi Manzur Rashid <kazimanzurrasid@gmail.com>",
   "license": "MIT",
-  "dependencies": {},
+  "repository" : {
+    "type" : "git",
+    "url" : "https://github.com/kazimanzurrashid/serverless-test-drive.git"
+  },
   "devDependencies": {
     "aws-sdk": "^2.3.14",
     "del": "^2.2.0",

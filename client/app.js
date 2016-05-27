@@ -77,7 +77,7 @@
 
     var url = endpoint + '/' + encodeURIComponent(word.value);
 
-    display.textContent = 'Loading...';
+    display.textContent = 'Counting...';
 
     ajax.get(url, function(err, data) {
       if (err) {

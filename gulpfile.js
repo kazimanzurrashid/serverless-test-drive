@@ -93,8 +93,8 @@ gulp.task('buckets:create', () => {
 });
 
 gulp.task('buckets:delete', () => {
-  var emptyLambdaBucket = emptyBucket(config.aws.lambdaBucket);
-  var emptySiteBucket = emptyBucket(config.aws.siteBucket);
+  const emptyLambdaBucket = emptyBucket(config.aws.lambdaBucket);
+  const emptySiteBucket = emptyBucket(config.aws.siteBucket);
 
   return Promise.all([emptyLambdaBucket, emptySiteBucket])
     .then(() => {
