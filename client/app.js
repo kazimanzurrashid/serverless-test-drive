@@ -42,7 +42,8 @@
       },
 
       post: function(url, payload, callback) {
-        request(url, 'POST', callback).send(JSON.stringify(payload));
+        request(url, 'POST', callback)
+          .send(payload ? JSON.stringify(payload) : void(0));
       }
     };
   })();
