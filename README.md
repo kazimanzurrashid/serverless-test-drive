@@ -9,10 +9,10 @@ to create server-less application. The application uses:
 5. Cloudformation
 
 ## Background
-In terms of feature you add work and count it, there are only two dynamodb
+In terms of feature, you can add word and count it, there are only two dynamodb
 tables, when a word is added it uses a lambda function to update the count of
 the other table. The other two lambda functions are exposed by API Gateway for
-client applications. The cloud formation template is responsible to setup
+client application. The cloud formation templates are responsible to setup
 everything and Gulp is used as task runner.
 
 ## Setup
