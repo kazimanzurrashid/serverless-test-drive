@@ -9,21 +9,21 @@
     "url": "https://github.com/kazimanzurrashid/serverless-test-drive.git"
   },
   "devDependencies": {
-    "aws-sdk": "^2.4.4",
-    "del": "^2.2.1",
-    "eslint": "^3.0.0",
+    "aws-sdk": "^2.7.20",
+    "del": "^2.2.2",
+    "eslint": "^3.12.2",
     "gulp": "^3.9.1",
-    "gulp-eslint": "^3.0.0",
+    "gulp-eslint": "^3.0.1",
     "gulp-filter": "^4.0.0",
-    "gulp-htmlmin": "^2.0.0",
+    "gulp-htmlmin": "^3.0.0",
     "gulp-jscs": "^4.0.0",
-    "gulp-load-plugins": "^1.2.4",
+    "gulp-load-plugins": "^1.4.0",
     "gulp-replace": "^0.5.4",
-    "gulp-sourcemaps": "^1.6.0",
-    "gulp-uglify": "^1.5.4",
+    "gulp-sourcemaps": "^1.9.1",
+    "gulp-uglify": "^2.0.0",
     "gulp-zip": "^3.2.0",
-    "jscs": "^3.0.6",
-    "mime-types": "^2.1.11",
-    "opener": "^1.4.1"
+    "jscs": "^3.0.7",
+    "mime-types": "^2.1.13",
+    "opener": "^1.4.2"
   }
 }
